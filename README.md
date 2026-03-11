@@ -60,7 +60,7 @@ swift build
 Read a `.DS_Store` file:
 
 ```bash
-swift run dsstore from /path/to/.DS_Store
+dsstore from /path/to/.DS_Store
 ```
 
 Useful `from` options:
@@ -73,7 +73,7 @@ Useful `from` options:
 Example:
 
 ```bash
-swift run dsstore from --format json --utc /path/to/.DS_Store
+dsstore from --format json --utc /path/to/.DS_Store
 ```
 
 JSON blob values are always emitted as hex:
@@ -88,11 +88,11 @@ JSON blob values are always emitted as hex:
 Update folder window and background settings:
 
 ```bash
-swift run dsstore window /path/to/Folder --background default
-swift run dsstore window /path/to/Folder --background '#08f'
-swift run dsstore window /path/to/Folder --width 978 --height 830
-swift run dsstore window /path/to/Folder --width 978 --height 830 --x 404 --y 99 --view icnv
-swift run dsstore window /path/to/Folder --show-sidebar true --show-status-bar false --show-toolbar true
+dsstore window /path/to/Folder --background default
+dsstore window /path/to/Folder --background '#08f'
+dsstore window /path/to/Folder --width 978 --height 830
+dsstore window /path/to/Folder --width 978 --height 830 --x 404 --y 99 --view icnv
+dsstore window /path/to/Folder --show-sidebar true --show-status-bar false --show-toolbar true
 ```
 
 The `window` command takes a folder path, not a `.DS_Store` path. The library resolves the correct backing `.DS_Store` automatically:
