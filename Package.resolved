@@ -1,0 +1,24 @@
+{
+  "originHash" : "f0d763375f49b26478a367171096109e5ef362eac3388876dd48828bed6a37f5",
+  "pins" : [
+    {
+      "identity" : "fp-swift",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/velocityzen/fp-swift",
+      "state" : {
+        "revision" : "06bf12a27606f7e21e31cd042097899c099cd2a4",
+        "version" : "1.5.0"
+      }
+    },
+    {
+      "identity" : "swift-argument-parser",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/apple/swift-argument-parser",
+      "state" : {
+        "revision" : "c5d11a805e765f52ba34ec7284bd4fcd6ba68615",
+        "version" : "1.7.0"
+      }
+    }
+  ],
+  "version" : 3
+}
