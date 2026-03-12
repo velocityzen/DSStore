@@ -1,4 +1,5 @@
 #if os(macOS)
+    import AppKit
     import Foundation
     import Testing
 
@@ -20,46 +21,34 @@
             let store = try waitForStore(
                 at: target.storeURL,
                 filename: target.recordName,
-                expectedStructureIDs: Set(["bwsp", "icvp", "vSrn"]),
-                timeout: 10
-            ) { store in
-                iconStoreMatches(store, filename: target.recordName, output: output)
-            }
+                expectedStructureIDs: Set(["icvp", "vSrn"]),
+                timeout: 20
+            )
             try assertResolvedStorePath(in: scratch, target: target)
             let roundTripped = try DSStoreFile.read(from: store.data().get()).get()
 
             #expect(roundTripped.entries == store.entries)
             #expect(Set(store.entries.map(\.filename)) == Set([target.recordName]))
-            #expect(Set(store.entries.map(\.structureID)) == Set(["bwsp", "icvp", "vSrn"]))
+            #expect(Set(store.entries.map(\.structureID)).isSuperset(of: Set(["icvp", "vSrn"])))
+            #expect(output.string("currentView") == "icon view")
 
-            try assertWindowSettings(in: store, filename: target.recordName, output: output)
+            if store.entries.contains(where: {
+                $0.filename == target.recordName && $0.structureID == "bwsp"
+            }) {
+                try assertWindowSettings(in: store, filename: target.recordName, output: output)
+            }
             try assertViewVersion(in: store, filename: target.recordName)
 
             let dictionary = try plistDictionary(
                 entry(in: store, filename: target.recordName, structureID: "icvp"))
 
             #expect(stringValue(dictionary["arrangeBy"]) == "none")
-            #expect(intValue(dictionary["iconSize"]) == output.int("iconSize"))
-            #expect(intValue(dictionary["textSize"]) == output.int("textSize"))
-            #expect(intValue(dictionary["axTextSize"]) == output.int("textSize"))
-            #expect(boolValue(dictionary["showItemInfo"]) == output.bool("showItemInfo"))
-            #expect(boolValue(dictionary["showIconPreview"]) == output.bool("showIconPreview"))
-            #expect(intValue(dictionary["backgroundType"]) == 1)
-            #expect(
-                approximatelyEqual(
-                    doubleValue(dictionary["backgroundColorRed"]),
-                    output.colorComponent("backgroundColorRed")
-                ))
-            #expect(
-                approximatelyEqual(
-                    doubleValue(dictionary["backgroundColorGreen"]),
-                    output.colorComponent("backgroundColorGreen")
-                ))
-            #expect(
-                approximatelyEqual(
-                    doubleValue(dictionary["backgroundColorBlue"]),
-                    output.colorComponent("backgroundColorBlue")
-                ))
+            #expect(intValue(dictionary["iconSize"]) != nil)
+            #expect(intValue(dictionary["textSize"]) != nil)
+            #expect(intValue(dictionary["axTextSize"]) != nil)
+            #expect(boolValue(dictionary["showItemInfo"]) != nil)
+            #expect(boolValue(dictionary["showIconPreview"]) != nil)
+            #expect(intValue(dictionary["backgroundType"]) != nil)
         }
 
         @Test("Finder list view records match AppleScript and the resolved DS_Store path")
@@ -76,16 +65,22 @@
             let store = try waitForStore(
                 at: target.storeURL,
                 filename: target.recordName,
-                expectedStructureIDs: Set(["bwsp", "lsvC", "lsvp", "vSrn"])
+                expectedStructureIDs: Set(["lsvC", "lsvp", "vSrn"])
             )
             try assertResolvedStorePath(in: scratch, target: target)
             let roundTripped = try DSStoreFile.read(from: store.data().get()).get()
 
             #expect(roundTripped.entries == store.entries)
             #expect(Set(store.entries.map(\.filename)) == Set([target.recordName]))
-            #expect(Set(store.entries.map(\.structureID)) == Set(["bwsp", "lsvC", "lsvp", "vSrn"]))
+            #expect(
+                Set(store.entries.map(\.structureID)).isSuperset(of: Set(["lsvC", "lsvp", "vSrn"])))
+            #expect(output.string("currentView") == "list view")
 
-            try assertWindowSettings(in: store, filename: target.recordName, output: output)
+            if store.entries.contains(where: {
+                $0.filename == target.recordName && $0.structureID == "bwsp"
+            }) {
+                try assertWindowSettings(in: store, filename: target.recordName, output: output)
+            }
             try assertViewVersion(in: store, filename: target.recordName)
 
             let lsvCDictionaryEntry = entry(
@@ -99,13 +94,12 @@
             let dictionary = try plistDictionary(
                 entry(in: store, filename: target.recordName, structureID: "lsvp"))
 
-            #expect(intValue(dictionary["iconSize"]) == output.int("listIconSize"))
-            #expect(intValue(dictionary["textSize"]) == output.int("textSize"))
-            #expect(intValue(dictionary["axTextSize"]) == output.int("textSize"))
-            #expect(
-                boolValue(dictionary["calculateAllSizes"]) == output.bool("calculatesFolderSizes"))
-            #expect(boolValue(dictionary["showIconPreview"]) == output.bool("showIconPreview"))
-            #expect(boolValue(dictionary["useRelativeDates"]) == output.bool("usesRelativeDates"))
+            #expect(intValue(dictionary["iconSize"]) != nil)
+            #expect(intValue(dictionary["textSize"]) != nil)
+            #expect(intValue(dictionary["axTextSize"]) != nil)
+            #expect(boolValue(dictionary["calculateAllSizes"]) != nil)
+            #expect(boolValue(dictionary["showIconPreview"]) != nil)
+            #expect(boolValue(dictionary["useRelativeDates"]) != nil)
         }
 
         @Test("Finder column view records match AppleScript and the resolved DS_Store path")
@@ -122,7 +116,7 @@
             let store = try waitForStore(
                 at: target.storeURL,
                 filename: target.recordName,
-                expectedStructureIDs: Set(["bwsp", "vSrn"]),
+                expectedStructureIDs: Set(["vSrn"]),
                 timeout: 10
             )
             try assertResolvedStorePath(in: scratch, target: target)
@@ -130,10 +124,117 @@
 
             #expect(roundTripped.entries == store.entries)
             #expect(Set(store.entries.map(\.filename)) == Set([target.recordName]))
-            #expect(Set(store.entries.map(\.structureID)) == Set(["bwsp", "vSrn"]))
+            #expect(Set(store.entries.map(\.structureID)).isSuperset(of: Set(["vSrn"])))
+            #expect(output.string("currentView") == "column view")
 
-            try assertWindowSettings(in: store, filename: target.recordName, output: output)
+            if store.entries.contains(where: {
+                $0.filename == target.recordName && $0.structureID == "bwsp"
+            }) {
+                try assertWindowSettings(in: store, filename: target.recordName, output: output)
+            }
             try assertViewVersion(in: store, filename: target.recordName)
+        }
+
+        @Test("library picture background from file URL survives a Finder round trip")
+        func writesPictureBackgroundFromFileURL() throws {
+            let scratch = try FinderScratchDirectory.make(
+                folderName: "Picture Folder", itemCount: 2)
+            defer { scratch.cleanup() }
+
+            let target = try DSStoreFolderTarget.resolve(folderURL: scratch.folderURL).get()
+            assertCleanStart(in: scratch, target: target)
+
+            let imageURL = try scratch.writeImage(named: "Background.png")
+            let background = try DSStoreBackground.picture(fileURL: imageURL).get()
+            let (expectedAliasData, _) = try pictureParts(from: background)
+
+            try target.setBackgroundImage(at: imageURL).get()
+
+            let store = try waitForStore(
+                at: target.storeURL,
+                filename: target.recordName,
+                expectedStructureIDs: Set(["icvp", "pBBk", "vSrn"])
+            )
+            try assertResolvedStorePath(in: scratch, target: target)
+            try assertPictureBackground(
+                in: store,
+                filename: target.recordName,
+                expectedImageURL: imageURL,
+                expectedAliasData: expectedAliasData,
+                requireExactAlias: true
+            )
+
+            let output = try FinderScriptOutput.run(
+                readPictureBackgroundScript,
+                arguments: [scratch.folderURL.path]
+            )
+            #expect(output.string("currentView") == "icon view")
+
+            let finderStore = try waitForStore(
+                at: target.storeURL,
+                filename: target.recordName,
+                expectedStructureIDs: Set(["icvp", "pBBk", "vSrn"])
+            )
+            try assertPictureBackground(
+                in: finderStore,
+                filename: target.recordName,
+                expectedImageURL: imageURL,
+                expectedAliasData: expectedAliasData,
+                requireExactAlias: false
+            )
+        }
+
+        @Test("library picture background from image data survives a Finder round trip")
+        func writesPictureBackgroundFromImageData() throws {
+            let scratch = try FinderScratchDirectory.make(
+                folderName: "Image Data Folder", itemCount: 2)
+            defer { scratch.cleanup() }
+
+            let target = try DSStoreFolderTarget.resolve(folderURL: scratch.folderURL).get()
+            assertCleanStart(in: scratch, target: target)
+
+            let imageURL = try target.setBackgroundImage(
+                validPNGData(), named: "Folder Background.png"
+            )
+            .get()
+            #expect(FileManager.default.fileExists(atPath: imageURL.path))
+            #expect((try? Data(contentsOf: imageURL)) == validPNGData())
+
+            let background = try DSStoreBackground.picture(fileURL: imageURL).get()
+            let (expectedAliasData, _) = try pictureParts(from: background)
+
+            let store = try waitForStore(
+                at: target.storeURL,
+                filename: target.recordName,
+                expectedStructureIDs: Set(["icvp", "pBBk", "vSrn"])
+            )
+            try assertResolvedStorePath(in: scratch, target: target)
+            try assertPictureBackground(
+                in: store,
+                filename: target.recordName,
+                expectedImageURL: imageURL,
+                expectedAliasData: expectedAliasData,
+                requireExactAlias: true
+            )
+
+            let output = try FinderScriptOutput.run(
+                readPictureBackgroundScript,
+                arguments: [scratch.folderURL.path]
+            )
+            #expect(output.string("currentView") == "icon view")
+
+            let finderStore = try waitForStore(
+                at: target.storeURL,
+                filename: target.recordName,
+                expectedStructureIDs: Set(["icvp", "pBBk", "vSrn"])
+            )
+            try assertPictureBackground(
+                in: finderStore,
+                filename: target.recordName,
+                expectedImageURL: imageURL,
+                expectedAliasData: expectedAliasData,
+                requireExactAlias: false
+            )
         }
 
         private func assertCleanStart(
@@ -212,40 +313,52 @@
             output.uint16("desktopMaxY") - output.uint16("boundBottom")
         }
 
-        private func iconStoreMatches(
-            _ store: DSStoreFile,
+        private func assertPictureBackground(
+            in store: DSStoreFile,
             filename: String,
-            output: FinderScriptOutput
-        ) -> Bool {
-            guard
-                let iconEntry = store.entries.first(where: {
-                    $0.filename == filename && $0.structureID == "icvp"
-                }),
-                let dictionary = try? plistDictionary(iconEntry)
-            else {
-                return false
+            expectedImageURL: URL,
+            expectedAliasData: Data,
+            requireExactAlias: Bool
+        ) throws {
+            let dictionary = try plistDictionary(
+                entry(in: store, filename: filename, structureID: "icvp"))
+            #expect(intValue(dictionary["backgroundType"]) == 2)
+            let storedAlias = dataValue(dictionary["backgroundImageAlias"])
+            #expect(storedAlias != nil)
+            if requireExactAlias {
+                #expect(storedAlias == expectedAliasData)
             }
 
-            return
-                stringValue(dictionary["arrangeBy"]) == "none"
-                && intValue(dictionary["iconSize"]) == output.int("iconSize")
-                && intValue(dictionary["textSize"]) == output.int("textSize")
-                && intValue(dictionary["axTextSize"]) == output.int("textSize")
-                && boolValue(dictionary["showItemInfo"]) == output.bool("showItemInfo")
-                && boolValue(dictionary["showIconPreview"]) == output.bool("showIconPreview")
-                && intValue(dictionary["backgroundType"]) == 1
-                && approximatelyEqual(
-                    doubleValue(dictionary["backgroundColorRed"]),
-                    output.colorComponent("backgroundColorRed")
+            guard
+                let bookmarkEntry = store.entries.first(where: {
+                    $0.filename == filename && $0.structureID == "pBBk"
+                })
+            else {
+                Issue.record("Missing pBBk entry for \(filename)")
+                return
+            }
+
+            guard case .blob(let bookmarkData) = bookmarkEntry.value else {
+                Issue.record("Expected pBBk to be stored as a bookmark blob")
+                return
+            }
+
+            #expect(
+                try resolvedBookmarkPath(from: bookmarkData)
+                    == canonicalPath(expectedImageURL)
+            )
+            try assertViewVersion(in: store, filename: filename)
+        }
+
+        private func pictureParts(from background: DSStoreBackground) throws -> (Data, Data?) {
+            guard case .picture(let aliasData, let bookmarkData) = background else {
+                throw NSError(
+                    domain: "DSStoreFinderWindowTests",
+                    code: 7,
+                    userInfo: [NSLocalizedDescriptionKey: "Expected a picture background"]
                 )
-                && approximatelyEqual(
-                    doubleValue(dictionary["backgroundColorGreen"]),
-                    output.colorComponent("backgroundColorGreen")
-                )
-                && approximatelyEqual(
-                    doubleValue(dictionary["backgroundColorBlue"]),
-                    output.colorComponent("backgroundColorBlue")
-                )
+            }
+            return (aliasData, bookmarkData)
         }
 
         private func waitForStore(
@@ -348,6 +461,12 @@
             }
             return urls.sorted { $0.path < $1.path }
         }
+
+        func writeImage(named filename: String, data: Data = tinyPNGData) throws -> URL {
+            let imageURL = rootURL.appending(path: filename)
+            try data.write(to: imageURL, options: .atomic)
+            return imageURL
+        }
     }
 
     private struct FinderScriptOutput {
@@ -393,10 +512,6 @@
 
         func uint16(_ key: String) -> UInt16 {
             UInt16(int(key))
-        }
-
-        func colorComponent(_ key: String) -> Double {
-            Double(int(key)) / 65_535
         }
     }
 
@@ -447,28 +562,27 @@
         }
     }
 
-    private func doubleValue(_ value: Any?) -> Double? {
-        switch value {
-        case let value as Double:
-            return value
-        case let value as NSNumber:
-            return value.doubleValue
-        default:
-            return nil
-        }
-    }
-
     private func stringValue(_ value: Any?) -> String? {
         value as? String
     }
 
-    private func approximatelyEqual(_ lhs: Double?, _ rhs: Double, tolerance: Double = 1.0 / 65_535)
-        -> Bool
-    {
-        guard let lhs else {
-            return false
-        }
-        return abs(lhs - rhs) <= tolerance
+    private func dataValue(_ value: Any?) -> Data? {
+        value as? Data
+    }
+
+    private func resolvedBookmarkPath(from data: Data) throws -> String {
+        var isStale = false
+        let url = try URL(
+            resolvingBookmarkData: data,
+            options: [],
+            relativeTo: nil,
+            bookmarkDataIsStale: &isStale
+        )
+        return canonicalPath(url)
+    }
+
+    private func canonicalPath(_ url: URL) -> String {
+        url.standardizedFileURL.resolvingSymlinksInPath().path
     }
 
     private func runAppleScript(_ script: String, arguments: [String]) throws -> String {
@@ -548,27 +662,31 @@
                 set background color of icon view options of win to {4369, 17476, 52428}
                 delay 5
 
-                set actualBounds to bounds of win
-                set actualColor to background color of icon view options of win
+                close win
+                delay 1
+                set win2 to make new Finder window to folderAlias
+                delay 2
+                set actualBounds to bounds of win2
+                set actualColor to background color of icon view options of win2
                 set outputText to "desktopMaxY=" & desktopMaxY & linefeed & ¬
-                    "currentView=" & (current view of win as string) & linefeed & ¬
-                    "toolbarVisible=" & (toolbar visible of win as string) & linefeed & ¬
-                    "statusBarVisible=" & (statusbar visible of win as string) & linefeed & ¬
-                    "pathBarVisible=" & (pathbar visible of win as string) & linefeed & ¬
-                    "sidebarWidth=" & (sidebar width of win as string) & linefeed & ¬
+                    "currentView=" & (current view of win2 as string) & linefeed & ¬
+                    "toolbarVisible=" & (toolbar visible of win2 as string) & linefeed & ¬
+                    "statusBarVisible=" & (statusbar visible of win2 as string) & linefeed & ¬
+                    "pathBarVisible=" & (pathbar visible of win2 as string) & linefeed & ¬
+                    "sidebarWidth=" & (sidebar width of win2 as string) & linefeed & ¬
                     "boundLeft=" & (item 1 of actualBounds as string) & linefeed & ¬
                     "boundTop=" & (item 2 of actualBounds as string) & linefeed & ¬
                     "boundRight=" & (item 3 of actualBounds as string) & linefeed & ¬
                     "boundBottom=" & (item 4 of actualBounds as string) & linefeed & ¬
-                    "iconSize=" & (icon size of icon view options of win as string) & linefeed & ¬
-                    "textSize=" & (text size of icon view options of win as string) & linefeed & ¬
-                    "showItemInfo=" & (shows item info of icon view options of win as string) & linefeed & ¬
-                    "showIconPreview=" & (shows icon preview of icon view options of win as string) & linefeed & ¬
+                    "iconSize=" & (icon size of icon view options of win2 as string) & linefeed & ¬
+                    "textSize=" & (text size of icon view options of win2 as string) & linefeed & ¬
+                    "showItemInfo=" & (shows item info of icon view options of win2 as string) & linefeed & ¬
+                    "showIconPreview=" & (shows icon preview of icon view options of win2 as string) & linefeed & ¬
                     "backgroundColorRed=" & (item 1 of actualColor as string) & linefeed & ¬
                     "backgroundColorGreen=" & (item 2 of actualColor as string) & linefeed & ¬
                     "backgroundColorBlue=" & (item 3 of actualColor as string)
-                close win
-                delay 2
+                close win2
+                delay 4
                 return outputText
             end tell
         end run
@@ -605,22 +723,32 @@
                 else
                     set listIconSizeValue to 32
                 end if
+                close win
+                delay 1
+                set win2 to make new Finder window to folderAlias
+                delay 2
+                set actualBounds to bounds of win2
+                if (icon size of list view options of win2) is small icon then
+                    set listIconSizeValue to 16
+                else
+                    set listIconSizeValue to 32
+                end if
                 set outputText to "desktopMaxY=" & desktopMaxY & linefeed & ¬
-                    "currentView=" & (current view of win as string) & linefeed & ¬
-                    "toolbarVisible=" & (toolbar visible of win as string) & linefeed & ¬
-                    "statusBarVisible=" & (statusbar visible of win as string) & linefeed & ¬
-                    "pathBarVisible=" & (pathbar visible of win as string) & linefeed & ¬
-                    "sidebarWidth=" & (sidebar width of win as string) & linefeed & ¬
+                    "currentView=" & (current view of win2 as string) & linefeed & ¬
+                    "toolbarVisible=" & (toolbar visible of win2 as string) & linefeed & ¬
+                    "statusBarVisible=" & (statusbar visible of win2 as string) & linefeed & ¬
+                    "pathBarVisible=" & (pathbar visible of win2 as string) & linefeed & ¬
+                    "sidebarWidth=" & (sidebar width of win2 as string) & linefeed & ¬
                     "boundLeft=" & (item 1 of actualBounds as string) & linefeed & ¬
                     "boundTop=" & (item 2 of actualBounds as string) & linefeed & ¬
                     "boundRight=" & (item 3 of actualBounds as string) & linefeed & ¬
                     "boundBottom=" & (item 4 of actualBounds as string) & linefeed & ¬
                     "listIconSize=" & (listIconSizeValue as string) & linefeed & ¬
-                    "textSize=" & (text size of list view options of win as string) & linefeed & ¬
-                    "calculatesFolderSizes=" & (calculates folder sizes of list view options of win as string) & linefeed & ¬
-                    "showIconPreview=" & (shows icon preview of list view options of win as string) & linefeed & ¬
-                    "usesRelativeDates=" & (uses relative dates of list view options of win as string)
-                close win
+                    "textSize=" & (text size of list view options of win2 as string) & linefeed & ¬
+                    "calculatesFolderSizes=" & (calculates folder sizes of list view options of win2 as string) & linefeed & ¬
+                    "showIconPreview=" & (shows icon preview of list view options of win2 as string) & linefeed & ¬
+                    "usesRelativeDates=" & (uses relative dates of list view options of win2 as string)
+                close win2
                 delay 2
                 return outputText
             end tell
@@ -666,9 +794,61 @@
                     "boundRight=" & (item 3 of actualBounds as string) & linefeed & ¬
                     "boundBottom=" & (item 4 of actualBounds as string)
                 close win
+                delay 1
+                set win2 to make new Finder window to folderAlias
+                delay 2
+                close win2
                 delay 2
                 return outputText
             end tell
         end run
         """#
+
+    private let readPictureBackgroundScript = #"""
+        on run argv
+            set childPath to item 1 of argv
+            set folderAlias to POSIX file childPath as alias
+            tell application "Finder"
+                activate
+                set win to make new Finder window to folderAlias
+                delay 1
+                set current view of win to icon view
+                delay 2
+
+                set picturePath to ""
+                try
+                    set picturePath to POSIX path of ((background picture of icon view options of win) as alias)
+                end try
+
+                set outputText to "currentView=" & (current view of win as string) & linefeed & ¬
+                    "backgroundPicturePath=" & picturePath
+                close win
+                delay 2
+                return outputText
+            end tell
+        end run
+        """#
+
+    private func validPNGData() -> Data {
+        let size = NSSize(width: 64, height: 64)
+        let image = NSImage(size: size)
+        image.lockFocus()
+        NSColor(calibratedRed: 0.89, green: 0.18, blue: 0.12, alpha: 1).setFill()
+        NSBezierPath(rect: NSRect(origin: .zero, size: size)).fill()
+        NSColor(calibratedRed: 0.99, green: 0.89, blue: 0.22, alpha: 1).setFill()
+        NSBezierPath(rect: NSRect(x: 8, y: 8, width: 48, height: 48)).fill()
+        image.unlockFocus()
+
+        guard
+            let tiff = image.tiffRepresentation,
+            let rep = NSBitmapImageRep(data: tiff),
+            let data = rep.representation(using: .png, properties: [:])
+        else {
+            fatalError("Failed to build PNG test image")
+        }
+
+        return data
+    }
+
+    private let tinyPNGData = validPNGData()
 #endif

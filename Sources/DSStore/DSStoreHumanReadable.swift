@@ -150,6 +150,8 @@ enum DSStoreHumanReadable {
             return "modification date cache"
         case "ph1S", "phyS":
             return "physical size"
+        case "pBBk":
+            return "background picture bookmark"
         case "pict":
             return "background picture alias"
         case "type":

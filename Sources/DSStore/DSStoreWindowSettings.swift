@@ -2,7 +2,7 @@ import Foundation
 
 /// Groups optional window setting fields for selective updates.
 ///
-/// Pass this to ``DSStoreFile/settingWindowSettings(_:for:)-6rma0`` to update
+/// Pass this to ``DSStoreFile/settingWindowSettings(_:for:)-(DSStoreWindowUpdate,_)`` to update
 /// only the fields that are non-nil.
 public struct DSStoreWindowUpdate: Equatable, Sendable {
     public let x: UInt16?

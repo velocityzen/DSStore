@@ -3,6 +3,10 @@ import Testing
 
 @testable import DSStore
 
+#if os(macOS)
+    import AppKit
+#endif
+
 @Suite("DSStore")
 struct DSStoreTests {
     @Test("reads the bundled Finder fixture")
@@ -197,6 +201,92 @@ struct DSStoreTests {
         #expect(target.storeURL == parent.appending(path: ".DS_Store"))
         #expect(target.recordName == "Child")
     }
+
+    #if os(macOS)
+        @Test("encodes picture background from a file URL")
+        func encodesPictureBackgroundFromFileURL() throws {
+            let scratch = try BackgroundScratchDirectory.make(folderName: "Picture Folder")
+            defer { scratch.cleanup() }
+
+            let imageURL = try scratch.writeImage(named: "Background.png")
+            let background = try DSStoreBackground.picture(fileURL: imageURL).get()
+
+            guard case .picture(let aliasData, let bookmarkData) = background else {
+                Issue.record("Expected a picture background")
+                return
+            }
+
+            #expect(!aliasData.isEmpty)
+            #expect(bookmarkData != nil)
+            #expect(try resolvedBookmarkPath(from: bookmarkData!) == canonicalPath(imageURL))
+        }
+
+        @Test("setBackgroundImage(at:) writes picture records to the resolved parent store")
+        func setsPictureBackgroundFromFileURL() throws {
+            let scratch = try BackgroundScratchDirectory.make(folderName: "Picture Folder")
+            defer { scratch.cleanup() }
+
+            let target = try DSStoreFolderTarget.resolve(folderURL: scratch.folderURL).get()
+            #expect(!FileManager.default.fileExists(atPath: target.storeURL.path))
+            #expect(
+                !FileManager.default.fileExists(
+                    atPath: scratch.folderURL.appending(path: ".DS_Store").path))
+
+            let imageURL = try scratch.writeImage(named: "Background.png")
+            try target.setBackgroundImage(at: imageURL).get()
+
+            #expect(FileManager.default.fileExists(atPath: target.storeURL.path))
+            #expect(
+                !FileManager.default.fileExists(
+                    atPath: scratch.folderURL.appending(path: ".DS_Store").path))
+
+            let store = try target.readStore().get()
+            let codes = Set(
+                store.entries
+                    .filter { $0.filename == target.recordName }
+                    .map(\.structureID)
+            )
+            #expect(codes == Set(["icvp", "pBBk", "vSrn"]))
+            try assertPictureEntries(
+                in: store,
+                filename: target.recordName,
+                expectedImageURL: imageURL
+            )
+        }
+
+        @Test("setBackgroundImage(_:named:) writes image data and picture records")
+        func setsPictureBackgroundFromImageData() throws {
+            let scratch = try BackgroundScratchDirectory.make(folderName: "Image Data Folder")
+            defer { scratch.cleanup() }
+
+            let target = try DSStoreFolderTarget.resolve(folderURL: scratch.folderURL).get()
+            let imageURL = try target.setBackgroundImage(
+                backgroundPNGData(), named: "Folder Background.png"
+            )
+            .get()
+
+            #expect(FileManager.default.fileExists(atPath: imageURL.path))
+            #expect(canonicalPath(imageURL).hasPrefix(canonicalPath(scratch.folderURL)))
+            #expect((try? Data(contentsOf: imageURL)) == backgroundPNGData())
+            #expect(FileManager.default.fileExists(atPath: target.storeURL.path))
+            #expect(
+                !FileManager.default.fileExists(
+                    atPath: scratch.folderURL.appending(path: ".DS_Store").path))
+
+            let store = try target.readStore().get()
+            let codes = Set(
+                store.entries
+                    .filter { $0.filename == target.recordName }
+                    .map(\.structureID)
+            )
+            #expect(codes == Set(["icvp", "pBBk", "vSrn"]))
+            try assertPictureEntries(
+                in: store,
+                filename: target.recordName,
+                expectedImageURL: imageURL
+            )
+        }
+    #endif
 }
 
 private func expectedFixtureEntries() -> [DSStoreEntry] {
@@ -251,3 +341,117 @@ private func entry(_ filename: String, _ structureID: String, _ value: DSStoreVa
 {
     try! DSStoreEntry.make(filename: filename, structureID: structureID, value: value).get()
 }
+
+#if os(macOS)
+    private struct BackgroundScratchDirectory {
+        let rootURL: URL
+        let folderURL: URL
+
+        static func make(folderName: String) throws -> Self {
+            let rootURL = FileManager.default.temporaryDirectory
+                .appending(
+                    path: "DSStore-Background-\(UUID().uuidString)", directoryHint: .isDirectory)
+            let folderURL = rootURL.appending(path: folderName, directoryHint: .isDirectory)
+            try FileManager.default.createDirectory(
+                at: folderURL, withIntermediateDirectories: true)
+            return Self(rootURL: rootURL, folderURL: folderURL)
+        }
+
+        func cleanup() {
+            try? FileManager.default.removeItem(at: rootURL)
+        }
+
+        func writeImage(named filename: String, data: Data = backgroundPNGData()) throws -> URL {
+            let imageURL = rootURL.appending(path: filename)
+            try data.write(to: imageURL, options: .atomic)
+            return imageURL
+        }
+    }
+
+    private func assertPictureEntries(
+        in store: DSStoreFile, filename: String, expectedImageURL: URL
+    )
+        throws
+    {
+        let icvp = try entry(in: store, filename: filename, structureID: "icvp")
+        guard case .blob(let icvpData) = icvp.value else {
+            Issue.record("Expected icvp to be stored as a plist blob")
+            return
+        }
+
+        let plist = try PropertyListSerialization.propertyList(from: icvpData, format: nil)
+        guard let dictionary = plist as? [String: Any] else {
+            Issue.record("Expected icvp plist dictionary")
+            return
+        }
+
+        #expect((dictionary["backgroundType"] as? NSNumber)?.intValue == 2)
+        #expect((dictionary["backgroundImageAlias"] as? Data)?.isEmpty == false)
+
+        let bookmark = try entry(in: store, filename: filename, structureID: "pBBk")
+        guard case .blob(let bookmarkData) = bookmark.value else {
+            Issue.record("Expected pBBk to be stored as a bookmark blob")
+            return
+        }
+
+        #expect(try resolvedBookmarkPath(from: bookmarkData) == canonicalPath(expectedImageURL))
+
+        let version = try entry(in: store, filename: filename, structureID: "vSrn")
+        #expect(version.value == .long(1))
+    }
+
+    private func entry(in store: DSStoreFile, filename: String, structureID: String) throws
+        -> DSStoreEntry
+    {
+        guard
+            let entry = store.entries.first(where: {
+                $0.filename == filename && $0.structureID == structureID
+            })
+        else {
+            throw NSError(
+                domain: "DSStoreTests",
+                code: 1,
+                userInfo: [
+                    NSLocalizedDescriptionKey: "Missing \(structureID) entry for \(filename)"
+                ]
+            )
+        }
+        return entry
+    }
+
+    private func resolvedBookmarkPath(from data: Data) throws -> String {
+        var isStale = false
+        let url = try URL(
+            resolvingBookmarkData: data,
+            options: [],
+            relativeTo: nil,
+            bookmarkDataIsStale: &isStale
+        )
+        return canonicalPath(url)
+    }
+
+    private func canonicalPath(_ url: URL) -> String {
+        url.standardizedFileURL.resolvingSymlinksInPath().path
+    }
+
+    private func backgroundPNGData() -> Data {
+        let size = NSSize(width: 64, height: 64)
+        let image = NSImage(size: size)
+        image.lockFocus()
+        NSColor(calibratedRed: 0.14, green: 0.56, blue: 0.91, alpha: 1).setFill()
+        NSBezierPath(rect: NSRect(origin: .zero, size: size)).fill()
+        NSColor(calibratedRed: 0.97, green: 0.85, blue: 0.22, alpha: 1).setFill()
+        NSBezierPath(rect: NSRect(x: 8, y: 8, width: 48, height: 48)).fill()
+        image.unlockFocus()
+
+        guard
+            let tiff = image.tiffRepresentation,
+            let rep = NSBitmapImageRep(data: tiff),
+            let data = rep.representation(using: .png, properties: [:])
+        else {
+            fatalError("Failed to build PNG test image")
+        }
+
+        return data
+    }
+#endif

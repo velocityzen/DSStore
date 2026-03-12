@@ -26,9 +26,11 @@ xcrun docc convert Sources/DSStore/DSStore.docc \
 - Read and write `.DS_Store` files
 - Typed `Result`-based API with typed `DSStoreError`
 - Human-readable record formatting via `CustomStringConvertible`
-- Finder-specific decoding for common records such as `BKGD`, `Iloc`, `icvo`, `bwsp`, `fwi0`, `modD`, and `moDD`
+- Finder-specific decoding for common records such as `BKGD`, `Iloc`, `icvo`, `icvp`, `bwsp`, `fwi0`, `pBBk`, `modD`, and `moDD`
 - Folder-level editing helpers for background and window frame settings
+- macOS-only picture background helpers from a local file URL or raw image data
 - CLI for dumping records and editing folder settings
+- Finder integration tests that compare live Finder output against decoded records and the resolved backing `.DS_Store` path
 
 ## Requirements
 
@@ -100,6 +102,8 @@ The `window` command takes a folder path, not a `.DS_Store` path. The library re
 - normal folder: parent folder’s `.DS_Store` + child folder name
 - filesystem root or volume root: folder’s own `.DS_Store` + record name `.`
 
+The CLI currently supports `default` and solid-color backgrounds. Finder picture backgrounds from a file URL or raw image data are available through the Swift API on macOS.
+
 ## Library Usage
 
 Read a `.DS_Store` file:
@@ -148,6 +152,42 @@ let colored = DSStoreFile()
   .settingBackground(.color(red: 0x1111, green: 0x4444, blue: 0xCCCC))
 
 let parsedColor = DSStoreBackground.color(hex: "#1144cc")
+```
+
+Apply a Finder picture background from an existing image file on macOS:
+
+```swift
+import DSStore
+import Foundation
+
+let folder = URL(filePath: "/path/to/Folder")
+let image = URL(filePath: "/path/to/Background.png")
+
+let result = DSStoreFolderTarget.resolve(folderURL: folder)
+  .flatMap { $0.setBackgroundImage(at: image) }
+```
+
+Write image data into the target folder and use it as the picture background on macOS:
+
+```swift
+import DSStore
+import Foundation
+
+let folder = URL(filePath: "/path/to/Folder")
+let imageData: Data = ...
+
+let result = DSStoreFolderTarget.resolve(folderURL: folder)
+  .flatMap { $0.setBackgroundImage(imageData, named: "Folder Background.png") }
+```
+
+Build the lower-level picture background payload directly:
+
+```swift
+import DSStore
+import Foundation
+
+let image = URL(filePath: "/path/to/Background.png")
+let background = DSStoreBackground.picture(fileURL: image)
 ```
 
 Create or update window settings:
@@ -202,6 +242,21 @@ let result = DSStoreFolderTarget.resolve(folderURL: folder)
   }
 ```
 
+Use the higher-level folder target convenience methods when you want Finder-style path resolution and immediate writes:
+
+```swift
+import DSStore
+import Foundation
+
+let folder = URL(filePath: "/path/to/Folder")
+
+let result = DSStoreFolderTarget.resolve(folderURL: folder)
+  .flatMap { target in
+    target.setBackground(.default)
+      .flatMap { target.readStore() }
+  }
+```
+
 ## Output Formatting
 
 `DSStoreEntry` and `DSStoreValue` provide human-readable formatting through `CustomStringConvertible`.
@@ -210,6 +265,7 @@ Examples:
 
 - `physical size | 4KB`
 - `background | default`
+- `background picture bookmark | blob 860 bytes`
 - `icon location | x=79 y=56`
 - `modification date cache | 2026-03-11T14:11:36-04:00`
 
@@ -229,4 +285,6 @@ The test suite includes:
 - round-tripping real Finder data
 - multi-level B-tree coverage
 - background and window-setting mutation coverage
+- macOS Finder integration coverage for icon, list, column, and picture-background records
+- fresh parent and child temp-folder coverage with no preexisting `.DS_Store`
 - error paths for invalid headers, corrupted data, and malformed entries

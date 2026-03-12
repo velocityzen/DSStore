@@ -60,4 +60,43 @@ public struct DSStoreFolderTarget: Equatable, Sendable {
     public func writeStore(_ store: DSStoreFile) -> Result<Void, DSStoreError> {
         store.write(to: storeURL)
     }
+
+    /// Applies a background setting to the resolved folder record and writes the updated store.
+    public func setBackground(_ background: DSStoreBackground) -> Result<Void, DSStoreError> {
+        readStore()
+            .flatMap { $0.settingBackground(background, for: recordName) }
+            .flatMap(writeStore)
+    }
+
+    #if os(macOS)
+        /// Applies an existing image file as the folder's Finder icon-view background.
+        ///
+        /// This is macOS-only because Finder picture backgrounds require native alias and bookmark
+        /// data.
+        public func setBackgroundImage(at imageURL: URL) -> Result<Void, DSStoreError> {
+            DSStoreBackground.picture(fileURL: imageURL)
+                .flatMap(setBackground)
+        }
+
+        /// Writes image data into the target folder and applies it as the Finder icon-view background.
+        ///
+        /// This is macOS-only because Finder picture backgrounds require native alias and bookmark
+        /// data.
+        ///
+        /// - Parameters:
+        ///   - imageData: The image bytes to write.
+        ///   - filename: The file name to create inside the target folder.
+        /// - Returns: The URL of the written image file when successful.
+        public func setBackgroundImage(
+            _ imageData: Data, named filename: String = ".background.png"
+        )
+            -> Result<URL, DSStoreError>
+        {
+            let imageURL = folderURL.appending(path: filename)
+            return DSStoreBackground.picture(imageData: imageData, writingTo: imageURL)
+                .flatMap { background in
+                    setBackground(background).map { imageURL }
+                }
+        }
+    #endif
 }

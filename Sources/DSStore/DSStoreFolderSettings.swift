@@ -1,12 +1,18 @@
 import FP
 import Foundation
 
+#if os(macOS)
+    import DSStoreAliasBridge
+#endif
+
 /// A Finder folder background setting.
 public enum DSStoreBackground: Equatable, Sendable {
     /// Use Finder's default background.
     case `default`
     /// Use a solid RGB color encoded as 16-bit channel values.
     case color(red: UInt16, green: UInt16, blue: UInt16)
+    /// Use an image file referenced by Finder alias and bookmark data.
+    case picture(aliasData: Data, bookmarkData: Data?)
 
     /// Parses a CSS-style hex color string into a Finder background color.
     ///
@@ -20,7 +26,79 @@ public enum DSStoreBackground: Equatable, Sendable {
         }
     }
 
-    func entry(filename: String) -> Result<DSStoreEntry, DSStoreError> {
+    #if os(macOS)
+        /// Builds a Finder picture background from an existing image file.
+        ///
+        /// The returned value contains the alias and bookmark payloads Finder expects inside icon
+        /// view records such as `icvp` and `pBBk`.
+        public static func picture(fileURL: URL) -> Result<Self, DSStoreError> {
+            let standardized = fileURL.standardizedFileURL.resolvingSymlinksInPath()
+
+            var isDirectory: ObjCBool = false
+            guard
+                FileManager.default.fileExists(
+                    atPath: standardized.path, isDirectory: &isDirectory),
+                !isDirectory.boolValue
+            else {
+                return .failure(.ioError("Image file does not exist at path: \(standardized.path)"))
+            }
+
+            let aliasResult: Result<Data, DSStoreError> = standardized.path.withCString { path in
+                guard let aliasRef = DSStoreCreateAliasData(path)?.takeRetainedValue() else {
+                    return .failure(
+                        .unsupportedWriteValue(
+                            "Could not create Finder alias data for \(standardized.path)"
+                        ))
+                }
+                return .success(aliasRef as Data)
+            }
+
+            let bookmarkResult: Result<Data, DSStoreError>
+            do {
+                bookmarkResult = .success(
+                    try standardized.bookmarkData(
+                        options: [.withSecurityScope, .securityScopeAllowOnlyReadAccess],
+                        includingResourceValuesForKeys: [.nameKey],
+                        relativeTo: nil
+                    ))
+            } catch {
+                bookmarkResult = .failure(
+                    .unsupportedWriteValue(
+                        "Could not create Finder bookmark data for \(standardized.path): \(error.localizedDescription)"
+                    ))
+            }
+
+            return aliasResult.flatMap { aliasData in
+                bookmarkResult.map { bookmarkData in
+                    .picture(aliasData: aliasData, bookmarkData: bookmarkData)
+                }
+            }
+        }
+
+        /// Writes image data to disk and builds a Finder picture background pointing at it.
+        public static func picture(imageData: Data, writingTo fileURL: URL) -> Result<
+            Self, DSStoreError
+        > {
+            let standardized = fileURL.standardizedFileURL.resolvingSymlinksInPath()
+            let parent = standardized.deletingLastPathComponent()
+
+            do {
+                try FileManager.default.createDirectory(
+                    at: parent, withIntermediateDirectories: true)
+                try imageData.write(to: standardized, options: .atomic)
+            } catch {
+                return .failure(
+                    .ioError(
+                        "Could not write background image to \(standardized.path): \(error.localizedDescription)"
+                    )
+                )
+            }
+
+            return picture(fileURL: standardized)
+        }
+    #endif
+
+    func legacyEntry(filename: String) -> Result<DSStoreEntry, DSStoreError> {
         switch self {
         case .default:
             return DSStoreEntry.make(
@@ -37,6 +115,11 @@ public enum DSStoreBackground: Equatable, Sendable {
                 0x00, 0x00,
             ])
             return DSStoreEntry.make(filename: filename, structureID: "BKGD", value: .blob(data))
+        case .picture:
+            return .failure(
+                .unsupportedWriteValue(
+                    "Picture backgrounds are stored in icon view records, not a BKGD blob"
+                ))
         }
     }
 }
