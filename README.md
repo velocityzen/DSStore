@@ -92,6 +92,7 @@ Update folder window and background settings:
 ```bash
 dsstore window /path/to/Folder --background default
 dsstore window /path/to/Folder --background '#08f'
+dsstore window /path/to/Folder --background /path/to/Background.png
 dsstore window /path/to/Folder --width 978 --height 830
 dsstore window /path/to/Folder --width 978 --height 830 --x 404 --y 99 --view icnv
 dsstore window /path/to/Folder --show-sidebar true --show-status-bar false --show-toolbar true
@@ -102,7 +103,7 @@ The `window` command takes a folder path, not a `.DS_Store` path. The library re
 - normal folder: parent folder’s `.DS_Store` + child folder name
 - filesystem root or volume root: folder’s own `.DS_Store` + record name `.`
 
-The CLI currently supports `default` and solid-color backgrounds. Finder picture backgrounds from a file URL or raw image data are available through the Swift API on macOS.
+The CLI supports `default`, solid-color, and picture backgrounds. When `--background` is a path to an existing image file, Finder picture background records are written using the macOS alias and bookmark APIs.
 
 ## Library Usage
 
@@ -146,10 +147,10 @@ Create or update background settings:
 import DSStore
 
 let updated = DSStoreFile()
-  .settingBackground(.default)
+  .withBackground(.default)
 
 let colored = DSStoreFile()
-  .settingBackground(.color(red: 0x1111, green: 0x4444, blue: 0xCCCC))
+  .withBackground(.color(red: 0x1111, green: 0x4444, blue: 0xCCCC))
 
 let parsedColor = DSStoreBackground.color(hex: "#1144cc")
 ```
@@ -196,7 +197,7 @@ Create or update window settings:
 import DSStore
 
 let result = DSStoreFile()
-  .settingWindowSettings(
+  .withWindowSettings(
     DSStoreWindowUpdate(
       width: 978,
       height: 830,
@@ -232,7 +233,7 @@ let result = DSStoreFolderTarget.resolve(folderURL: folder)
   .flatMap { target in
     target.readStore()
       .flatMap { store in
-        store.settingWindowFrame(
+        store.withWindowFrame(
           for: target.recordName,
           width: 978,
           height: 830

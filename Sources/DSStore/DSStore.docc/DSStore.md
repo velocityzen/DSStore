@@ -71,14 +71,14 @@ The macOS test suite includes Finder integration coverage that creates fresh par
 - ``DSStoreWindowSettings/showStatusBar``
 - ``DSStoreWindowSettings/showTabView``
 - ``DSStoreWindowSettings/showToolbar``
-- ``DSStoreFile/settingBackground(_:for:)``
+- ``DSStoreFile/withBackground(_:for:)``
 - ``DSStoreFile/windowSettings(for:)``
 - ``DSStoreWindowUpdate``
 - ``DSStoreWindowUpdate/init(x:y:width:height:view:containerShowSidebar:showSidebar:showStatusBar:showTabView:showToolbar:)``
-- ``DSStoreFile/settingWindowSettings(_:for:)-(DSStoreWindowSettings,_)``
-- ``DSStoreFile/settingWindowSettings(_:for:)-(DSStoreWindowUpdate,_)``
-- ``DSStoreFile/settingWindowFrame(_:for:)``
-- ``DSStoreFile/settingWindowFrame(for:x:y:width:height:view:)``
+- ``DSStoreFile/withWindowSettings(_:for:)-(DSStoreWindowSettings,_)``
+- ``DSStoreFile/withWindowSettings(_:for:)-(DSStoreWindowUpdate,_)``
+- ``DSStoreFile/withWindowFrame(_:for:)``
+- ``DSStoreFile/withWindowFrame(for:x:y:width:height:view:)``
 - ``DSStoreFile/windowFrame(for:)``
 - ``DSStoreFile/backgroundEntry(for:)``
 

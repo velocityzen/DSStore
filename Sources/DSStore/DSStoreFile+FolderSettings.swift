@@ -8,10 +8,10 @@ extension DSStoreFile {
     ///     macOS, also persist bookmark data in `pBBk`.
     ///   - filename: The Finder filename the record applies to. Use `"."` for the current folder record.
     /// - Returns: A typed result containing the updated store or a `DSStoreError`.
-    public func settingBackground(_ background: DSStoreBackground, for filename: String = ".")
+    public func withBackground(_ background: DSStoreBackground, for filename: String = ".")
         -> Result<Self, DSStoreError>
     {
-        settingIconViewBackground(background, for: filename)
+        withIconViewBackground(background, for: filename)
             .flatMap { store in
                 switch background {
                 case .default, .color:
@@ -43,7 +43,7 @@ extension DSStoreFile {
     ///   - frame: The window frame to store.
     ///   - filename: The Finder filename the record applies to. Use `"."` for the current folder record.
     /// - Returns: A typed result containing the updated store or a `DSStoreError`.
-    public func settingWindowFrame(_ frame: DSStoreWindowFrame, for filename: String = ".")
+    public func withWindowFrame(_ frame: DSStoreWindowFrame, for filename: String = ".")
         -> Result<
             Self, DSStoreError
         >
@@ -72,13 +72,13 @@ extension DSStoreFile {
     ///   - settings: The plist-backed window settings to store.
     ///   - filename: The Finder filename the record applies to. Use `"."` for the current folder record.
     /// - Returns: A typed result containing the updated store or a `DSStoreError`.
-    public func settingWindowSettings(
+    public func withWindowSettings(
         _ settings: DSStoreWindowSettings,
         for filename: String = "."
     ) -> Result<Self, DSStoreError> {
         let updatedStoreResult: Result<Self, DSStoreError>
         if let frame = settings.frame {
-            updatedStoreResult = settingWindowFrame(frame, for: filename)
+            updatedStoreResult = withWindowFrame(frame, for: filename)
         } else {
             updatedStoreResult = .success(self)
         }
@@ -100,7 +100,7 @@ extension DSStoreFile {
     ///   - update: The window settings to apply. Only non-nil fields are changed.
     ///   - filename: The Finder filename the record applies to. Use `"."` for the current folder record.
     /// - Returns: A typed result containing the updated store or a `DSStoreError`.
-    public func settingWindowSettings(
+    public func withWindowSettings(
         _ update: DSStoreWindowUpdate,
         for filename: String = "."
     ) -> Result<Self, DSStoreError> {
@@ -145,7 +145,7 @@ extension DSStoreFile {
         }
 
         return frameResult.flatMap { frame in
-            settingWindowSettings(
+            withWindowSettings(
                 DSStoreWindowSettings(
                     frame: frame,
                     containerShowSidebar: update.containerShowSidebar,
@@ -169,7 +169,7 @@ extension DSStoreFile {
     ///   - height: The window height.
     ///   - view: The optional four-character Finder view style.
     /// - Returns: A typed result containing the updated store or a `DSStoreError`.
-    public func settingWindowFrame(
+    public func withWindowFrame(
         for filename: String = ".",
         x: UInt16? = nil,
         y: UInt16? = nil,
@@ -178,7 +178,7 @@ extension DSStoreFile {
         view: String? = nil
     ) -> Result<Self, DSStoreError> {
         let current = windowFrame(for: filename)
-        return settingWindowSettings(
+        return withWindowSettings(
             DSStoreWindowUpdate(
                 x: x ?? current?.x,
                 y: y ?? current?.y,
@@ -214,7 +214,7 @@ extension DSStoreFile {
         entries.first { $0.filename == filename && $0.structureID == "BKGD" }
     }
 
-    private func settingIconViewBackground(_ background: DSStoreBackground, for filename: String)
+    private func withIconViewBackground(_ background: DSStoreBackground, for filename: String)
         -> Result<Self, DSStoreError>
     {
         let existingICVP = entries.first { $0.filename == filename && $0.structureID == "icvp" }

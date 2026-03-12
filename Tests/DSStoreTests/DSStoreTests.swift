@@ -47,7 +47,7 @@ struct DSStoreTests {
     @Test("sets folder background through the library abstraction")
     func setsBackground() throws {
         let store = DSStoreFile()
-        let updated = try store.settingBackground(.color(red: 0x0000, green: 0x8888, blue: 0xFFFF))
+        let updated = try store.withBackground(.color(red: 0x0000, green: 0x8888, blue: 0xFFFF))
             .get()
         let background = updated.backgroundEntry()!
 
@@ -59,7 +59,7 @@ struct DSStoreTests {
     @Test("sets window frame through the library abstraction")
     func setsWindowFrame() throws {
         let store = DSStoreFile()
-        let updated = try store.settingWindowFrame(width: 800, height: 600).get()
+        let updated = try store.withWindowFrame(width: 800, height: 600).get()
         let frame = updated.windowFrame()
 
         #expect(frame?.x == 0)
@@ -131,7 +131,7 @@ struct DSStoreTests {
             .get()
         let store = DSStoreFile(entries: [bwsp])
 
-        let updated = try store.settingWindowFrame(width: 900, height: 700).get()
+        let updated = try store.withWindowFrame(width: 900, height: 700).get()
         let updatedBWSP = updated.entries.first { $0.filename == "." && $0.structureID == "bwsp" }
 
         guard case .blob(let data)? = updatedBWSP?.value else {
@@ -163,7 +163,7 @@ struct DSStoreTests {
             .get()
         let store = DSStoreFile(entries: [bwsp])
 
-        let updated = try store.settingWindowSettings(
+        let updated = try store.withWindowSettings(
             DSStoreWindowUpdate(
                 showSidebar: false,
                 showStatusBar: false,

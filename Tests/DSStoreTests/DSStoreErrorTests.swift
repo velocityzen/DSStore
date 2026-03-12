@@ -169,7 +169,7 @@ struct DSStoreErrorTests {
     @Test("settingWindowSettings fails without width/height when no existing frame")
     func failsWithoutRequiredDimensions() {
         let store = DSStoreFile()
-        let result = store.settingWindowSettings(DSStoreWindowUpdate(x: 50))
+        let result = store.withWindowSettings(DSStoreWindowUpdate(x: 50))
         guard case .failure(.unsupportedWriteValue) = result else {
             Issue.record("Expected unsupportedWriteValue error, got \(result)")
             return

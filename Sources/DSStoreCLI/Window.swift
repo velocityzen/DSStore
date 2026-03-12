@@ -27,7 +27,10 @@ extension DSStoreCLI {
         @Option(name: .shortAndLong, help: "Finder view style 4CC such as icnv, clmv, or Nlsv.")
         var view: String?
 
-        @Option(help: "Background value: default or a hex color like #08f.")
+        @Option(
+            help:
+                "Background value: default, a hex color like #08f, or a path to an image file."
+        )
         var background: String?
 
         @Option(help: "Set bwsp ContainerShowSidebar.")
@@ -103,11 +106,14 @@ extension DSStoreCLI {
             let parsedBackground: Result<DSStoreBackground, DSStoreError>
             if background == "default" {
                 parsedBackground = .success(.default)
+            } else if FileManager.default.fileExists(atPath: background) {
+                parsedBackground = DSStoreBackground.picture(
+                    fileURL: URL(filePath: background))
             } else {
                 parsedBackground = DSStoreBackground.color(hex: background)
             }
 
-            return parsedBackground.flatMap { store.settingBackground($0, for: recordName) }
+            return parsedBackground.flatMap { store.withBackground($0, for: recordName) }
         }
 
         private func applyWindowSettings(to store: DSStoreFile, recordName: String) -> Result<
@@ -117,7 +123,7 @@ extension DSStoreCLI {
                 return .success(store)
             }
 
-            return store.settingWindowSettings(
+            return store.withWindowSettings(
                 DSStoreWindowUpdate(
                     x: x,
                     y: y,

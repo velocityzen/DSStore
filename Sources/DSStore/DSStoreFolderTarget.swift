@@ -64,7 +64,7 @@ public struct DSStoreFolderTarget: Equatable, Sendable {
     /// Applies a background setting to the resolved folder record and writes the updated store.
     public func setBackground(_ background: DSStoreBackground) -> Result<Void, DSStoreError> {
         readStore()
-            .flatMap { $0.settingBackground(background, for: recordName) }
+            .flatMap { $0.withBackground(background, for: recordName) }
             .flatMap(writeStore)
     }
 
